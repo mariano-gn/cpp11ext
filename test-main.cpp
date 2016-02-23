@@ -22,7 +22,38 @@ SOFTWARE.
 
 #include <iostream>
 #include <string>
+#include <unordered_map>
+#include "cpp11ext.h"
+
+enum class ecshort {
+    first_short,
+    second_short
+};
+
+enum old_enum {
+    first_old = 10,
+    second_old
+};
+
+template<typename K, typename M>
+void print(M&& map, K&& key) {
+    std::cout << "Value of " << key << ": " << map[key] << std::endl;
+}
+template<typename M>
+void print(M&& map, ecshort&& key) {
+    std::cout << "Value of " << static_cast<std::underlying_type<ecshort>::type>(key) << ": " << map[key] << std::endl;
+}
 
 int main() {
-    std::cout << "Hello World!" << std::endl;
+    ext11::unordered_map<size_t, std::string> first_map{ {1, "one"}, {2, "two"} };
+    print(first_map, 1);
+    print(first_map, 2);
+
+    ext11::unordered_map<old_enum, std::string> second_map{ {first_old, "The first old"}, {second_old, "The second old"} };
+    print(second_map, first_old);
+    print(second_map, second_old);
+
+    ext11::unordered_map<ecshort, std::string> failing_map{ { ecshort::first_short, "The first ecshort" }, { ecshort::second_short, "The second ecshort" } };
+    print(failing_map, ecshort::first_short);
+    print(failing_map, ecshort::second_short);
 }

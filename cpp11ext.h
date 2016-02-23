@@ -22,5 +22,31 @@ SOFTWARE.
 
 #ifndef _CPP11EXT_H_
 #define _CPP11EXT_H_
+#include <type_traits>
+#include <unordered_map>
+
+namespace ext11 {
+    // hash function for scoped enums.
+    // What it does is simply forwarding the job to the hash function of the underlying type of the enum.
+    struct echash {
+        template <typename enumclass_t>
+        std::size_t operator()(enumclass_t&& ec) const {
+            using under_type = typename std::underlying_type<typename std::decay<enumclass_t>::type>::type;
+            return std::hash<under_type>()(static_cast<under_type>(ec));
+        }
+    };
+
+    // Hash function for ext11::unordered_map
+    // If said parameter is a scoped enum it uses echash, otherwise it just uses std::hash
+    template <typename key_t>
+    using hash_t = typename std::conditional<std::is_enum<key_t>::value, echash, std::hash<key_t>>::type;
+
+    template <typename key_t, 
+        typename T,
+        typename _hasher = hash_t<key_t>,
+        typename _eqt = std::equal_to<key_t>,
+        typename _alloc = std::allocator<std::pair<const key_t, T>>>
+    using unordered_map = std::unordered_map<key_t, T, _hasher, _eqt, _alloc>;
+}
 
 #endif // _CPP11EXT_H_
