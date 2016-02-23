@@ -42,11 +42,11 @@ namespace ext11 {
     using hash_t = typename std::conditional<std::is_enum<key_t>::value, echash, std::hash<key_t>>::type;
 
     template <typename key_t, 
-        typename T,
+        typename value_t,
         typename _hasher = hash_t<key_t>,
         typename _eqt = std::equal_to<key_t>,
-        typename _alloc = std::allocator<std::pair<const key_t, T>>>
-    using unordered_map = std::unordered_map<key_t, T, _hasher, _eqt, _alloc>;
+        typename _alloc = std::allocator<std::pair<const key_t, value_t>>>
+    using unordered_map = std::unordered_map<key_t, value_t, _hasher, _eqt, _alloc>;
 }
 
 #endif // _CPP11EXT_H_

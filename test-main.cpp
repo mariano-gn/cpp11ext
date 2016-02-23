@@ -22,7 +22,6 @@ SOFTWARE.
 
 #include <iostream>
 #include <string>
-#include <unordered_map>
 #include "cpp11ext.h"
 
 enum class ecshort {

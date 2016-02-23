@@ -1,11 +1,131 @@
 <a href="#es">Español</a>
 <a id="top"></a>
 <br>
-<!--Here goes the English version-->
+Hi all!
+&nbsp;
+This time with a detour from Logger to show a little utility for those working with C++11.
+Some time ago, doing I don't remember what, I wanted to make an <code>std::unordered_map</code> using scoped enums (new from C++11) as keys. Well, depending on your OS and/or libstd++ and/or compiler version, you can't. This was recently experienced by a <a href="http://martin.com.uy/sec">friend</a> who reminded me of it and a fix I made for that.
+&nbsp;
+It's an issue with the standard and the implementations which, as far as I read, it was fixed with C++14 and newer versions of the failing implementations (i.e. it works fine on Visual Studio 2015 regardless of the standard) but it has an extremely easy fix, so I wrapped it on a header and I'm presenting it to you.
+&nbsp;
+The problem is just that there is no template specialization for the <code>std::hash</code> function when the key type is an enum. And then, the fix just involves defining that :)
+<h2>Implementation</h2>  
+[code language="cpp"]
+namespace ext11 {
+    struct echash {
+        template <typename enumclass_t>
+        std::size_t operator()(enumclass_t&& ec) const {
+            using under_type = typename std::underlying_type<typename std::decay<enumclass_t>::type>::type;
+            return std::hash<under_type>()(static_cast<under_type>(ec));
+        }
+    };
+[/code]
+Here you can see the struct <code>echash</code> and the hashing operator that takes as input the key and returns an <code>std::size_t</code> associated with it. The <code>using</code> declaration is long, but not that complicated, just type traits applied to the enum type.
+&nbsp;
+<code>std::decay</code> allows us to remove constant/volatile qualifiers, rvalue references and all extra data of the type, leaving us with the essential part. For example, <code>std::decay&lt;const volatile unsigned int&amp;&amp;&gt;::type</code> will in turn return <code>unsigned int</code>.
+&nbsp;
+To understand <code>std::underlying_type</code> we need to know that enums in C++11 have a type associated, a holder that is one of the integral types. It can be explicit or implicit, it doesn't matter, if you don't define it yourself the implementation of C++11 will use one for you. I.E.:
+[code language="cpp"]
+// explicit declaration of the underlying type
+enum class my_enum : long {
+    FIRST=2000000,
+    SECOND
+};  
+
+// implicit declaration of the underlying type
+enum class my_other_enum {
+    FIRST = 0,
+    SECOND
+};
+[/code]
+What <code>std::underlying_type</code> does then is return the underlying type of a given enum, in the case of <code>my_enum</code> that will be <code>long</code> and in the other, <code>my_other_enum</code>, it might be <code>int</code>.
+Finally what the using declaration does is just obtain the underlying type of the enum that's passed as parameter.
+In the return statement we just forward the responsibility to the corresponding implementation of <code>std::hash</code> based on that underlying type, safely casting the input enum to that type.
+&nbsp;
+What I also provided is an alias for <code>unordered_map</code> within the <code>ext11</code> namespace that provides this function only when necessary to the <code>std::unordered_map</code>.
+[code language="cpp"]
+template <typename key_t>
+    using hash_t = typename std::conditional<std::is_enum<key_t>::value, echash<key_t>, std::hash<key_t>>::type;
+
+    template <typename key_t, 
+        typename value_t,
+        typename _hasher = hash_t<key_t>,
+        typename _eqt = std::equal_to<key_t>,
+        typename _alloc = std::allocator<std::pair<const key_t, value_t>>>
+    using unordered_map = std::unordered_map<key_t, value_t, _hasher, _eqt, _alloc>;
+}
+[/code]
+First, using <code>std::is_enum</code> and <code>std::conditional</code> we define the hasher function based on the key type. This will make <code>hash_t</code> be either <code>echash</code> for enums or <code>std::hash</code> (default) for any other type.
+&nbsp;
+Later we declare a new type <code>ext11::unordered_map</code> as an alias of <code>std::unordered_map</code> with the only difference being the hasher function to take into account our specialization. (The comparison and allocator functions are left as default but present so that the interface to this new <code>unordered_map</code> is identical to the STL provided one).
+&nbsp;
+Hope you like it, this allowed us to see various examples of type traits and SFINAE-based definition of types as <code>std::underlying_type</code>, <code>std::decay</code>, <code>std::conditional</code> and <code>std::is_enum</code>. As always, <a href="https://github.com/mariano-gn/cpp11ext">here</a> is the source code.
+&nbsp;
+Best!
 <br>
 <a href="#top">Back to Top</a>
 <hr>
 <a id="es"></a>
 <br>
-<!--Acá va la versión en Español-->
+¡Buenas!
+&nbsp;
+Esta vez vengo con un desvío del Logger para mostrar una pequeña utilidad para aquellos que están trabajando con C++11.
+Hace un tiempo, haciendo no sé que cosa, quería usar un <code>std::unordered_map</code> usando <i>scoped enums</i> (nuevos, desde C++11) como keys. Bueno, resulta que dependiendo de tu SO y/o versión de libstdc++ y/o compilador, no podés. Hace poco, un <a href="http://martin.com.uy/sec">amigo</a> sufrió con lo mismo y me hizo acordar del problema y del fix que armé para ello.
+&nbsp;
+Es un problema con el estandar y las implementaciones de C++11, que según leí, ya fue arreglado con C++14 y las nuevas versiones de las implementaciones que no funcionaban (p.e. funciona bien en Visual Studio 2015, independientemente del estandar y lo que dice) pero como tiene un arreglo bastante fácil, lo metí en un header y ahora se los presento.
+&nbsp;
+La cuestión es simplemente que no hay especialización de la función <code>std::hash</code> cuando el typo de la clave es un enum. Entonces, el arreglo es definir eso mismo :)
+<h2>Implementación</h2>  
+[code language="cpp"]
+namespace ext11 {
+    struct echash {
+        template <typename enumclass_t>
+        std::size_t operator()(enumclass_t&& ec) const {
+            using under_type = typename std::underlying_type<typename std::decay<enumclass_t>::type>::type;
+            return std::hash<under_type>()(static_cast<under_type>(ec));
+        }
+    };
+[/code]
+Acá ven el struct <code>echash</code> y el operador de hasheo que toma como input la clave y retorna un <code>std::size_t</code> asociado. La declaración de <code>using</code> es larga, pero no tan complicada, solo usa type traits aplicados al typo del enum.
+&nbsp;
+<code>std::decay</code> permite remover calificadores const/volatile, rvalue references y todo dato extra del tipo, dejando únicamente la parte esencial. Por ejemplo, <code>std::decay&lt;const volatile unsigned int&amp;&amp;&gt;::type</code> retorna <code>unsigned int</code>.
+&nbsp;
+Para entender <code>std::underlying_type</code> hay que saber que todos los enums en C++11 tienen un tipo asociado, un contenedor que es de alguno de los tipos integrales (int, long, unsigned int, etc...). Puede ser explícito o implícito, no importa, si no se define la implementación lo elige por vos. P.E.:
+[code language="cpp"]
+// declaración explícita del tipo subyacente
+enum class my_enum : long {
+    FIRST=2000000,
+    SECOND
+};  
+
+// declaración implícita del tipo subyacente
+enum class my_other_enum {
+    FIRST = 0,
+    SECOND
+};
+[/code]
+Lo que <code>std::underlying_type</code> hace entonces es retornar este tipo subyacente del enum particular, en el caso de <code>my_enum</code> será <code>long</code> y en el otro, <code>my_other_enum</code>, podría ser <code>int</code>.
+Finalmente lo que la declaración de using hace es obtener el tipo subyacente del enumerado que se pasa por parámetro.
+En la sentencia de retorno simplemente se pasa la responsabilidad de calcular el hash a la implementación de <code>std::hash</code> basado en el tipo subyacente, casteando de manera segura el enumerado de input a este tipo.
+&nbsp;
+Lo que además proveo es un alias para <code>unordered_map</code> dentro del namespace <code>ext11</code> que provee esta función a <code>std::unordered_map</code> solamente cuando es necesario.
+[code language="cpp"]
+template <typename key_t>
+    using hash_t = typename std::conditional<std::is_enum<key_t>::value, echash<key_t>, std::hash<key_t>>::type;
+
+    template <typename key_t, 
+        typename value_t,
+        typename _hasher = hash_t<key_t>,
+        typename _eqt = std::equal_to<key_t>,
+        typename _alloc = std::allocator<std::pair<const key_t, value_t>>>
+    using unordered_map = std::unordered_map<key_t, value_t, _hasher, _eqt, _alloc>;
+}
+[/code]
+Primero, usando <code>std::is_enum</code> y <code>std::conditional</code> definimos la función de hash que se va a utilizar en base al tipo de la clave. Esto hace que <code>hash_t</code> sea <code>echash</code> para enumerados o <code>std::hash</code> (valor por defecto) para cualquier otro tipo.
+&nbsp;
+Luego se declara un nuevo tipo <code>ext11::unordered_map</code> como alias de <code>std::unordered_map</code> con la única diferencia siendo la función de hasheo, teniendo en cuenta la especialización previa. (Las funciones de comparación y allocator se dejan con el valor por defecto pero presentes, para que la interfaz a este nuevo <code>unordered_map</code> sea identica a la del que provee la STL).
+&nbsp;
+Espero que haya gustado, esto nos permitió ver varios ejemplos de type traits y definiciones de tipos basadas en SFINAE como <code>std::underlying_type</code>, <code>std::decay</code>, <code>std::conditional</code> y <code>std::is_enum</code>. Como siempore, <a href="https://github.com/mariano-gn/cpp11ext">acá</a> está el código fuente.
+&nbsp;
+¡Suerte!
 <a href="#es">Inicio</a>
